@@ -7,8 +7,8 @@ import time
 
 from fastapi import HTTPException, Request
 
-# Per-key rate limiter: max N batches per minute
-_DEFAULT_RATE_LIMIT = 10  # batches per minute
+# Per-key rate limiter: max N batches per second
+_DEFAULT_RATE_LIMIT = 10  # batches per second
 _rate_buckets: dict[str, list[float]] = {}
 _rate_lock = threading.Lock()
 
@@ -31,14 +31,14 @@ def verify_api_key(request: Request) -> None:
     if not _check_rate_limit(token, rate_limit):
         raise HTTPException(
             status_code=429,
-            detail=f"Rate limit exceeded: max {rate_limit} batches/min",
+            detail=f"Rate limit exceeded: max {rate_limit} batches/sec",
         )
 
 
 def _check_rate_limit(key: str, limit: int) -> bool:
     """Sliding window rate limiter. Returns True if request is allowed."""
     now = time.monotonic()
-    window = 60.0  # 1 minute
+    window = 1.0  # 1 second
 
     with _rate_lock:
         if key not in _rate_buckets:
