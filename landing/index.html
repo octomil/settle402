@@ -326,8 +326,8 @@
   <div class="container">
     <div class="logo">settle<span>402</span></div>
     <div class="nav-links">
-      <a href="https://github.com/octomil/settle402">GitHub</a>
-      <a href="https://github.com/octomil/settle402#api" class="btn-primary">Docs</a>
+      <a href="#quickstart">Docs</a>
+      <a href="#pricing" class="btn-primary">Pricing</a>
     </div>
   </div>
 </nav>
@@ -337,8 +337,8 @@
     <h1>Batch settle <span class="highlight">x402</span><br>micro-payments</h1>
     <p>Settle thousands of $0.001 USDC payments in a single transaction. No custom contracts. No per-settlement fees.</p>
     <div class="hero-cta">
-      <a href="https://github.com/octomil/settle402#quick-start" class="btn-large primary">Get Started</a>
-      <a href="https://github.com/octomil/settle402" class="btn-large secondary">View on GitHub</a>
+      <a href="#quickstart" class="btn-large primary">Get Started</a>
+      <a href="#how-it-works" class="btn-large secondary">How It Works</a>
     </div>
   </div>
 </section>
@@ -373,7 +373,7 @@ Savings:     <span style="color:var(--green)">98% less</span> than individual
   </div>
 </section>
 
-<section class="pricing">
+<section class="pricing" id="pricing">
   <div class="container">
     <h2>Pricing</h2>
     <div class="comparison" style="grid-template-columns: 1fr 1fr;">
@@ -403,7 +403,7 @@ Per-auth results + revert reasons
   </div>
 </section>
 
-<section class="how-it-works">
+<section class="how-it-works" id="how-it-works">
   <div class="container">
     <h2>How it works</h2>
     <div class="steps">
@@ -439,9 +439,14 @@ Per-auth results + revert reasons
   </div>
 </section>
 
-<section class="quickstart">
+<section class="quickstart" id="quickstart">
   <div class="container">
-    <h2>Quick start</h2>
+    <h2>Get started</h2>
+    <div class="comparison-card good" style="text-align: center; margin-bottom: 32px; border-color: rgba(59, 130, 246, 0.3);">
+      <h3 style="color: var(--accent);">Get an API Key</h3>
+      <p style="color: var(--text-muted); margin: 12px 0 20px;">Start settling batches in minutes. Email us and we'll send you an API key.</p>
+      <a href="mailto:settle402@octomil.com?subject=API%20Key%20Request&body=I'd%20like%20an%20API%20key%20for%20settle402." class="btn-large primary" style="display: inline-block;">Request API Key</a>
+    </div>
     <div class="code-block">
       <div class="code-header">1. Send a batch</div>
       <div class="code-body">curl <span class="flag">-X</span> POST https://api.settle402.dev/settle \
@@ -506,8 +511,7 @@ Per-auth results + revert reasons
 
 <footer>
   <div class="container">
-    <p>settle402 is open source. Built by <a href="https://octomil.com">Octomil</a>.</p>
-    <p style="margin-top: 8px;"><a href="https://github.com/octomil/settle402">GitHub</a></p>
+    <p>Built by <a href="https://octomil.com">Octomil</a>.</p>
   </div>
 </footer>
 
