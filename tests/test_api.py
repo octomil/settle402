@@ -89,6 +89,42 @@ class TestSettleValidation:
         m._w3 = None
         m._account = None
 
+    def test_batch_over_1000_rejected(self, client):
+        import settler.main as m
+
+        m._config = type("C", (), {"chain_id": 8453})()
+        m._w3 = True
+        m._account = True
+
+        auth = {
+            "authorization": {
+                "from": "0x" + "11" * 20,
+                "to": "0x" + "22" * 20,
+                "value": 1000,
+                "validAfter": 0,
+                "validBefore": 0,
+                "nonce": 0,
+            },
+            "signature": "0x" + "ab" * 32 + "cd" * 32 + "1b",
+            "payer": "0x" + "11" * 20,
+            "amount": 1000,
+        }
+        resp = client.post(
+            "/settle",
+            json={
+                "network": "base",
+                "chainId": 8453,
+                "tokenContract": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                "authorizations": [auth] * 1001,
+            },
+        )
+        assert resp.status_code == 400
+        assert "1,000" in resp.json()["detail"]
+
+        m._config = None
+        m._w3 = None
+        m._account = None
+
     def test_chain_mismatch_rejected(self, client):
         import settler.main as m
 

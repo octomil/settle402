@@ -255,6 +255,18 @@
     .code-body .string { color: #22c55e; }
     .code-body .flag { color: #3b82f6; }
 
+    /* Pricing */
+    .pricing {
+      padding: 60px 0;
+    }
+    .pricing h2 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
     /* Chains */
     .chains {
       padding: 60px 0;
@@ -348,13 +360,43 @@ Per payment: <span style="color:var(--red)">$0.005</span>
       </div>
       <div class="comparison-card good">
         <h3>With settle402</h3>
-        <div class="big-number">$0.005</div>
+        <div class="big-number">$0.10</div>
         <div class="detail">Same 1,000 payments, one transaction</div>
         <div class="math-detail">
-Payments:    1,000
-Gas per tx:  ~$0.005
-Total cost:  1 x $0.005     = <span style="color:var(--green)">$0.005</span>
-Per payment: <span style="color:var(--green)">$0.000005</span>
+Payments:    1,000 (max per batch)
+Batch fee:   $0.10 flat
+Per payment: <span style="color:var(--green)">$0.0001</span>
+Savings:     <span style="color:var(--green)">98% less</span> than individual
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pricing">
+  <div class="container">
+    <h2>Pricing</h2>
+    <div class="comparison" style="grid-template-columns: 1fr 1fr;">
+      <div class="comparison-card" style="border-color: var(--border); text-align: center;">
+        <h3 style="color: var(--text-muted);">Self-hosted</h3>
+        <div class="big-number" style="color: var(--text);">Free</div>
+        <div class="detail">Run your own instance</div>
+        <div class="math-detail" style="text-align: left;">
+You pay only gas (~$0.005/batch)
+Up to 1,000 auths per batch
+Docker or bare metal
+Bring your own EOA + RPC
+        </div>
+      </div>
+      <div class="comparison-card good" style="text-align: center;">
+        <h3>Hosted</h3>
+        <div class="big-number">$0.10</div>
+        <div class="detail">Per batch, up to 1,000 auths</div>
+        <div class="math-detail" style="text-align: left;">
+Gas included — no EOA needed
+No infrastructure to manage
+API key access
+Per-auth results + revert reasons
         </div>
       </div>
     </div>
@@ -401,32 +443,31 @@ Per payment: <span style="color:var(--green)">$0.000005</span>
   <div class="container">
     <h2>Quick start</h2>
     <div class="code-block">
-      <div class="code-header">terminal</div>
-      <div class="code-body"><span class="comment"># Clone and configure</span>
-git clone https://github.com/octomil/settle402.git
-cd settle402
-cp .env.example .env
-<span class="comment"># Edit .env with your RPC URL and private key</span>
-
-<span class="comment"># Run with Docker</span>
-docker compose up <span class="flag">-d</span>
-
-<span class="comment"># Or run directly</span>
-pip install <span class="flag">-e</span> .
-uvicorn settler.main:app <span class="flag">--port</span> 8002</div>
-    </div>
-    <br>
-    <div class="code-block">
-      <div class="code-header">POST /settle</div>
-      <div class="code-body">curl <span class="flag">-X</span> POST http://localhost:8002/settle \
+      <div class="code-header">1. Send a batch</div>
+      <div class="code-body">curl <span class="flag">-X</span> POST https://settle402.octomil.com/settle \
   <span class="flag">-H</span> <span class="string">"Content-Type: application/json"</span> \
-  <span class="flag">-H</span> <span class="string">"X-Settler-Token: your-key"</span> \
+  <span class="flag">-H</span> <span class="string">"X-Settler-Token: your-api-key"</span> \
   <span class="flag">-d</span> <span class="string">'{
     "network": "base",
     "chainId": 8453,
     "tokenContract": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     "authorizations": [...]
   }'</span></div>
+    </div>
+    <br>
+    <div class="code-block">
+      <div class="code-header">2. Get per-auth results</div>
+      <div class="code-body"><span class="string">{
+  "status": "settled",
+  "total_submitted": 1000,
+  "total_succeeded": 998,
+  "total_failed": 2,
+  "total_gas_cost_eth": "0.00500000",
+  "results": [
+    {"index": 0, "success": true, "tx_hash": "0x..."},
+    {"index": 1, "success": false, "error": "authorization expired"}
+  ]
+}</span></div>
     </div>
   </div>
 </section>

@@ -125,6 +125,9 @@ async def settle(request: SettleBatchRequest) -> SettleBatchResponse:
     if not request.authorizations:
         raise HTTPException(400, "No authorizations provided")
 
+    if len(request.authorizations) > 1000:
+        raise HTTPException(400, "Maximum 1,000 authorizations per batch")
+
     # Check ETH balance
     balance = await _w3.eth.get_balance(_account.address)
     if balance < 100_000_000_000_000:  # < 0.0001 ETH
