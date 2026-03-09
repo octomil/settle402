@@ -129,6 +129,29 @@ async def settle(request: SettleBatchRequest) -> SettleBatchResponse:
     if len(request.authorizations) > 1000:
         raise HTTPException(400, "Maximum 1,000 authorizations per batch")
 
+    # Fee validation (before balance check — no RPC call if fee is invalid)
+    fee_auth = None
+    if _config.fee_enabled:
+        fee_auth = request.feeAuthorization
+        if fee_auth is None:
+            raise HTTPException(
+                status_code=402,
+                detail="Fee authorization required. Include a feeAuthorization "
+                f"paying >= {_config.fee_amount} base units to {_account.address}",
+            )
+        fee_to = fee_auth.authorization.get("to", "")
+        if fee_to.lower() != _account.address.lower():
+            raise HTTPException(
+                status_code=402,
+                detail=f"Fee authorization 'to' must be {_account.address}, got {fee_to}",
+            )
+        fee_value = int(fee_auth.authorization.get("value", 0))
+        if fee_value < _config.fee_amount:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Fee value {fee_value} below minimum {_config.fee_amount}",
+            )
+
     # Check ETH balance
     balance = await _w3.eth.get_balance(_account.address)
     if balance < 100_000_000_000_000:  # < 0.0001 ETH
@@ -142,6 +165,7 @@ async def settle(request: SettleBatchRequest) -> SettleBatchResponse:
         auths=request.authorizations,
         max_calls_per_tx=_config.max_calls_per_tx,
         gas_multiplier=_config.gas_price_multiplier,
+        fee_auth=fee_auth,
     )
 
     # Update lifetime stats

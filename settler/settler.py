@@ -169,11 +169,13 @@ async def settle_batch(
     auths: list[AuthorizationItem],
     max_calls_per_tx: int = 400,
     gas_multiplier: float = 1.1,
+    fee_auth: AuthorizationItem | None = None,
 ) -> SettleBatchResponse:
     """Submit a batch of EIP-3009 authorizations via Multicall3.
 
     Uses aggregate3 with allowFailure=true so individual auth failures
-    don't revert the entire transaction.
+    don't revert the entire transaction. If fee_auth is provided, it is
+    prepended to the first sub-batch with allowFailure=false.
     """
     async with _settlement_lock:
         return await _settle_batch_inner(
@@ -184,6 +186,7 @@ async def settle_batch(
             auths,
             max_calls_per_tx,
             gas_multiplier,
+            fee_auth,
         )
 
 
@@ -195,6 +198,7 @@ async def _settle_batch_inner(
     auths: list[AuthorizationItem],
     max_calls_per_tx: int,
     gas_multiplier: float,
+    fee_auth: AuthorizationItem | None = None,
 ) -> SettleBatchResponse:
     sub_batches = split_into_sub_batches(auths, max_calls_per_tx)
     all_results: list[AuthorizationResult] = []
@@ -202,9 +206,17 @@ async def _settle_batch_inner(
     global_index = 0
     total_gas_used = 0
 
-    for sub_batch in sub_batches:
+    for batch_index, sub_batch in enumerate(sub_batches):
         # Build Multicall3 calls
+        has_fee_call = fee_auth is not None and batch_index == 0
         calls: list[tuple[str, bool, bytes]] = []
+
+        # Prepend fee call to first sub-batch (allowFailure=False)
+        if has_fee_call:
+            fv, fr, fs = split_signature(fee_auth.signature)
+            fee_calldata = encode_transfer_with_authorization(fee_auth.authorization, fv, fr, fs)
+            calls.append((token_contract, False, fee_calldata))
+
         for auth_item in sub_batch:
             v, r, s = split_signature(auth_item.signature)
             calldata = encode_transfer_with_authorization(auth_item.authorization, v, r, s)
@@ -282,6 +294,7 @@ async def _settle_batch_inner(
         tx_hash_hex = receipt["transactionHash"].hex()
 
         # Decode Multicall3 results from the tx output
+        results_offset = 1 if has_fee_call else 0
         try:
             raw_output = await w3.eth.call(
                 {
@@ -292,6 +305,7 @@ async def _settle_batch_inner(
                 receipt["blockNumber"],
             )
             decoded = decode_aggregate3_results(raw_output)
+            decoded = decoded[results_offset:]  # skip fee result
         except Exception:
             # Fallback: if we can't decode, assume all succeeded if tx succeeded
             decoded = [(receipt["status"] == 1, b"")] * len(sub_batch)
@@ -356,4 +370,5 @@ async def _settle_batch_inner(
         total_gas_cost_eth=f"{total_gas_cost_wei / 1e18:.8f}",
         sub_batches=sub_batch_results,
         results=all_results,
+        fee_collected=fee_auth is not None,
     )

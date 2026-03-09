@@ -39,6 +39,8 @@ class SettlerConfig:
     max_calls_per_tx: int = 400
     gas_price_multiplier: float = 1.1
     rate_limit: int = 10  # max batches per minute per API key
+    fee_enabled: bool = False
+    fee_amount: int = 100_000  # $0.10 USDC (6 decimals)
     port: int = 8002
     log_level: str = "info"
 
@@ -54,6 +56,8 @@ class SettlerConfig:
             max_calls_per_tx=int(os.environ.get("SETTLER_MAX_CALLS_PER_TX", "400")),
             gas_price_multiplier=float(os.environ.get("SETTLER_GAS_MULTIPLIER", "1.1")),
             rate_limit=int(os.environ.get("SETTLER_RATE_LIMIT", "10")),
+            fee_enabled=os.environ.get("SETTLER_FEE_ENABLED", "").lower() in ("true", "1", "yes"),
+            fee_amount=int(os.environ.get("SETTLER_FEE_AMOUNT", "100000")),
             port=int(os.environ.get("SETTLER_PORT", "8002")),
             log_level=os.environ.get("SETTLER_LOG_LEVEL", "info"),
         )

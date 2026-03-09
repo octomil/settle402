@@ -23,6 +23,7 @@ class SettleBatchRequest(BaseModel):
     chainId: int  # 8453, 84532, etc.
     tokenContract: str  # EIP-3009 token (e.g. USDC)
     authorizations: list[AuthorizationItem]
+    feeAuthorization: AuthorizationItem | None = None
 
 
 class AuthorizationResult(BaseModel):
@@ -57,6 +58,7 @@ class SettleBatchResponse(BaseModel):
     total_gas_cost_eth: str
     sub_batches: list[SubBatchResult]
     results: list[AuthorizationResult]
+    fee_collected: bool = False
 
 
 class SettlerStats(BaseModel):

@@ -118,6 +118,28 @@ class TestDecodeRevertReason:
         assert result.startswith("revert (0x")
 
 
+class TestFeeCallEncoding:
+    def test_fee_call_uses_allow_failure_false(self):
+        """Fee call should use allowFailure=False, user calls use True."""
+        fee_auth = _make_auth(0)
+        user_auth = _make_auth(1)
+
+        v1, r1, s1 = split_signature(fee_auth.signature)
+        fee_cd = encode_transfer_with_authorization(fee_auth.authorization, v1, r1, s1)
+        fee_call = ("0x" + "ff" * 20, False, fee_cd)
+
+        v2, r2, s2 = split_signature(user_auth.signature)
+        user_cd = encode_transfer_with_authorization(user_auth.authorization, v2, r2, s2)
+        user_call = ("0x" + "ff" * 20, True, user_cd)
+
+        calls = [fee_call, user_call]
+        calldata = encode_aggregate3(calls)
+        assert calldata[:4] == bytes.fromhex("82ad56cb")
+        # Fee call has allowFailure=False, user has True
+        assert fee_call[1] is False
+        assert user_call[1] is True
+
+
 def _make_auth(index: int) -> AuthorizationItem:
     return AuthorizationItem(
         authorization={
