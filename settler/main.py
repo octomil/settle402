@@ -7,8 +7,11 @@ hundreds of micro-payments.
 
 from __future__ import annotations
 
+import json
 import logging
+import secrets
 import time
+from pathlib import Path
 
 from eth_account import Account
 from fastapi import Depends, FastAPI, HTTPException
@@ -67,7 +70,7 @@ async def startup() -> None:
     else:
         logger.warning("SETTLER_PRIVATE_KEY not set — settler will reject /settle requests")
 
-    app.state.api_keys = _config.api_keys
+    app.state.api_keys = _config.api_keys + _load_keys()
     app.state.rate_limit = _config.rate_limit
     _start_time = time.monotonic()
 
@@ -82,6 +85,37 @@ async def shutdown() -> None:
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
+
+_KEYS_FILE = Path("/data/keys.json")
+
+
+def _save_keys() -> None:
+    """Persist API keys to disk."""
+    try:
+        _KEYS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _KEYS_FILE.write_text(json.dumps(app.state.api_keys))
+    except Exception:
+        pass  # non-fatal — keys still in memory
+
+
+def _load_keys() -> list[str]:
+    """Load persisted API keys from disk."""
+    try:
+        if _KEYS_FILE.exists():
+            return json.loads(_KEYS_FILE.read_text())
+    except Exception:
+        pass
+    return []
+
+
+@app.post("/keys")
+async def create_key() -> dict:
+    """Generate a new API key. Rate-limited by IP via throttling."""
+    key = f"s402_{secrets.token_urlsafe(32)}"
+    app.state.api_keys.append(key)
+    _save_keys()
+    return {"key": key}
 
 
 @app.get("/health")

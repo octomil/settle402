@@ -442,10 +442,14 @@ Per-auth results + revert reasons
 <section class="quickstart" id="quickstart">
   <div class="container">
     <h2>Get started</h2>
-    <div class="comparison-card good" style="text-align: center; margin-bottom: 32px; border-color: rgba(59, 130, 246, 0.3);">
+    <div class="comparison-card good" id="get-key" style="text-align: center; margin-bottom: 32px; border-color: rgba(59, 130, 246, 0.3);">
       <h3 style="color: var(--accent);">Get an API Key</h3>
-      <p style="color: var(--text-muted); margin: 12px 0 20px;">Start settling batches in minutes. Email us and we'll send you an API key.</p>
-      <a href="mailto:settle402@octomil.com?subject=API%20Key%20Request&body=I'd%20like%20an%20API%20key%20for%20settle402." class="btn-large primary" style="display: inline-block;">Request API Key</a>
+      <p style="color: var(--text-muted); margin: 12px 0 20px;">Instant access. No signup required.</p>
+      <button onclick="generateKey()" class="btn-large primary" id="gen-btn" style="border: none; cursor: pointer;">Generate API Key</button>
+      <div id="key-result" style="display: none; margin-top: 20px;">
+        <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-family: 'JetBrains Mono', monospace; font-size: 14px; word-break: break-all; user-select: all;" id="key-value"></div>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">Save this key — it won't be shown again.</p>
+      </div>
     </div>
     <div class="code-block">
       <div class="code-header">1. Send a batch</div>
@@ -514,6 +518,25 @@ Per-auth results + revert reasons
     <p>Built by <a href="https://octomil.com">Octomil</a>.</p>
   </div>
 </footer>
+
+<script>
+async function generateKey() {
+  const btn = document.getElementById('gen-btn');
+  btn.textContent = 'Generating...';
+  btn.disabled = true;
+  try {
+    const resp = await fetch('https://api.settle402.dev/keys', { method: 'POST' });
+    const data = await resp.json();
+    document.getElementById('key-value').textContent = data.key;
+    document.getElementById('key-result').style.display = 'block';
+    btn.style.display = 'none';
+  } catch (e) {
+    btn.textContent = 'Generate API Key';
+    btn.disabled = false;
+    alert('Failed to generate key. Try again.');
+  }
+}
+</script>
 
 </body>
 </html>
