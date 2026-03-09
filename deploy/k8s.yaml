@@ -1,0 +1,124 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: settle402
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: settle402-secrets
+  namespace: settle402
+type: Opaque
+stringData:
+  SETTLER_RPC_URL: "REPLACE_ME"
+  SETTLER_PRIVATE_KEY: "REPLACE_ME"
+  SETTLER_API_KEYS: "REPLACE_ME"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: settle402
+  namespace: settle402
+  labels:
+    app: settle402
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: settle402
+  template:
+    metadata:
+      labels:
+        app: settle402
+    spec:
+      imagePullSecrets:
+        - name: ghcr-credentials
+      containers:
+        - name: settle402
+          image: ghcr.io/octomil/settle402:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8002
+              protocol: TCP
+          env:
+            - name: SETTLER_RPC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: settle402-secrets
+                  key: SETTLER_RPC_URL
+            - name: SETTLER_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: settle402-secrets
+                  key: SETTLER_PRIVATE_KEY
+            - name: SETTLER_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: settle402-secrets
+                  key: SETTLER_API_KEYS
+            - name: SETTLER_CHAIN_ID
+              value: "8453"
+            - name: SETTLER_LOG_LEVEL
+              value: "info"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: settle402
+  namespace: settle402
+  labels:
+    app: settle402
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8002
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: settle402
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: settle402
+  namespace: settle402
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  rules:
+    - host: settle402.octomil.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: settle402
+                port:
+                  number: 8002
+  tls:
+    - secretName: settle402-tls
+      hosts:
+        - settle402.octomil.com
