@@ -108,7 +108,7 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   rules:
-    - host: settle402.octomil.com
+    - host: settle402.dev
       http:
         paths:
           - path: /
@@ -121,4 +121,4 @@ spec:
   tls:
     - secretName: settle402-tls
       hosts:
-        - settle402.octomil.com
+        - settle402.dev
