@@ -1,0 +1,12 @@
+services:
+  settler:
+    build: .
+    ports:
+      - "8002:8002"
+    environment:
+      SETTLER_RPC_URL: ${SETTLER_RPC_URL}
+      SETTLER_PRIVATE_KEY: ${SETTLER_PRIVATE_KEY}
+      SETTLER_CHAIN_ID: ${SETTLER_CHAIN_ID:-8453}
+      SETTLER_API_KEYS: ${SETTLER_API_KEYS:-}
+      SETTLER_LOG_LEVEL: ${SETTLER_LOG_LEVEL:-info}
+    restart: unless-stopped

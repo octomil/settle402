@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>settle402 — Batch Settlement for x402 Micro-Payments</title>
+  <meta name="description" content="Settle thousands of x402 micro-payments in a single transaction. 99.5% margin on $0.001 payments via Multicall3 on Base.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #262626;
+      --text: #fafafa;
+      --text-muted: #a1a1aa;
+      --accent: #3b82f6;
+      --accent-dim: #1d4ed8;
+      --green: #22c55e;
+      --green-dim: rgba(34, 197, 94, 0.1);
+      --red: #ef4444;
+      --red-dim: rgba(239, 68, 68, 0.1);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Nav */
+    nav {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    nav .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--accent); }
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    nav a:hover { color: var(--text); }
+    .nav-links { display: flex; gap: 24px; align-items: center; }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover { background: var(--accent-dim); color: white; }
+
+    /* Hero */
+    .hero {
+      padding: 100px 0 80px;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 700;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+    .hero h1 .highlight { color: var(--accent); }
+    .hero p {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 40px;
+    }
+    .hero-cta {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-large {
+      padding: 12px 28px;
+      font-size: 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-large.primary { background: var(--accent); color: white; }
+    .btn-large.primary:hover { background: var(--accent-dim); }
+    .btn-large.secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-large.secondary:hover { border-color: var(--text-muted); }
+
+    /* Economics */
+    .economics {
+      padding: 60px 0;
+    }
+    .economics h2 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .comparison-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+    }
+    .comparison-card.bad { border-color: rgba(239, 68, 68, 0.3); }
+    .comparison-card.good { border-color: rgba(34, 197, 94, 0.3); }
+    .comparison-card h3 {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+    .comparison-card.bad h3 { color: var(--red); }
+    .comparison-card.good h3 { color: var(--green); }
+    .comparison-card .big-number {
+      font-size: 48px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .comparison-card.bad .big-number { color: var(--red); }
+    .comparison-card.good .big-number { color: var(--green); }
+    .comparison-card .detail {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .math-detail {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 2;
+    }
+
+    /* How it works */
+    .how-it-works {
+      padding: 60px 0;
+    }
+    .how-it-works h2 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .steps {
+      display: grid;
+      gap: 16px;
+    }
+    .step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .step-number {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .step h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .step p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    /* Code */
+    .quickstart {
+      padding: 60px 0;
+    }
+    .quickstart h2 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .code-header {
+      padding: 12px 20px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .code-body {
+      padding: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .code-body .comment { color: #6b7280; }
+    .code-body .string { color: #22c55e; }
+    .code-body .flag { color: #3b82f6; }
+
+    /* Chains */
+    .chains {
+      padding: 60px 0;
+    }
+    .chains h2 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .chain-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .chain-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+    .chain-card .chain-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .chain-card .chain-id {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 32px; }
+      .hero p { font-size: 16px; }
+      .comparison { grid-template-columns: 1fr; }
+      .chain-grid { grid-template-columns: 1fr 1fr; }
+      .comparison-card .big-number { font-size: 36px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <div class="logo">settle<span>402</span></div>
+    <div class="nav-links">
+      <a href="https://github.com/octomil/settle402">GitHub</a>
+      <a href="https://github.com/octomil/settle402#api" class="btn-primary">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <h1>Batch settle <span class="highlight">x402</span><br>micro-payments</h1>
+    <p>Settle thousands of $0.001 USDC payments in a single transaction. No custom contracts. No per-settlement fees.</p>
+    <div class="hero-cta">
+      <a href="https://github.com/octomil/settle402#quick-start" class="btn-large primary">Get Started</a>
+      <a href="https://github.com/octomil/settle402" class="btn-large secondary">View on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<section class="economics">
+  <div class="container">
+    <h2>The math works</h2>
+    <div class="comparison">
+      <div class="comparison-card bad">
+        <h3>Without settle402</h3>
+        <div class="big-number">-$4</div>
+        <div class="detail">Per 1,000 settlements at $0.001 each</div>
+        <div class="math-detail">
+Revenue:     1,000 x $0.001 = $1.00
+Gas:         1,000 x $0.005 = $5.00
+Net:                          <span style="color:var(--red)">-$4.00</span>
+        </div>
+      </div>
+      <div class="comparison-card good">
+        <h3>With settle402</h3>
+        <div class="big-number">+$0.995</div>
+        <div class="detail">Same 1,000 settlements, one transaction</div>
+        <div class="math-detail">
+Revenue:     1,000 x $0.001 = $1.00
+Gas:                     1 tx = $0.005
+Net:                          <span style="color:var(--green)">+$0.995</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="how-it-works">
+  <div class="container">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div>
+          <h3>Accumulate authorizations</h3>
+          <p>Your x402 seller collects signed EIP-3009 transferWithAuthorization payloads from payers.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div>
+          <h3>POST /settle</h3>
+          <p>Send the batch to settle402. It encodes all authorizations into a single Multicall3.aggregate3() call.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div>
+          <h3>One transaction</h3>
+          <p>settle402 submits one EIP-1559 transaction on Base. Each authorization settles independently — failures don't revert the batch.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <div>
+          <h3>Per-auth results</h3>
+          <p>Get back per-authorization success/failure with decoded revert reasons. Re-queue only the failures.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="quickstart">
+  <div class="container">
+    <h2>Quick start</h2>
+    <div class="code-block">
+      <div class="code-header">terminal</div>
+      <div class="code-body"><span class="comment"># Clone and configure</span>
+git clone https://github.com/octomil/settle402.git
+cd settle402
+cp .env.example .env
+<span class="comment"># Edit .env with your RPC URL and private key</span>
+
+<span class="comment"># Run with Docker</span>
+docker compose up <span class="flag">-d</span>
+
+<span class="comment"># Or run directly</span>
+pip install <span class="flag">-e</span> .
+uvicorn settler.main:app <span class="flag">--port</span> 8002</div>
+    </div>
+    <br>
+    <div class="code-block">
+      <div class="code-header">POST /settle</div>
+      <div class="code-body">curl <span class="flag">-X</span> POST http://localhost:8002/settle \
+  <span class="flag">-H</span> <span class="string">"Content-Type: application/json"</span> \
+  <span class="flag">-H</span> <span class="string">"X-Settler-Token: your-key"</span> \
+  <span class="flag">-d</span> <span class="string">'{
+    "network": "base",
+    "chainId": 8453,
+    "tokenContract": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "authorizations": [...]
+  }'</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="chains">
+  <div class="container">
+    <h2>Supported chains</h2>
+    <div class="chain-grid">
+      <div class="chain-card">
+        <div class="chain-name">Base</div>
+        <div class="chain-id">8453</div>
+      </div>
+      <div class="chain-card">
+        <div class="chain-name">Ethereum</div>
+        <div class="chain-id">1</div>
+      </div>
+      <div class="chain-card">
+        <div class="chain-name">Polygon</div>
+        <div class="chain-id">137</div>
+      </div>
+      <div class="chain-card">
+        <div class="chain-name">Arbitrum</div>
+        <div class="chain-id">42161</div>
+      </div>
+      <div class="chain-card">
+        <div class="chain-name">Optimism</div>
+        <div class="chain-id">10</div>
+      </div>
+      <div class="chain-card">
+        <div class="chain-name">Base Sepolia</div>
+        <div class="chain-id">84532</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>settle402 is open source. Built by <a href="https://octomil.com">Octomil</a>.</p>
+    <p style="margin-top: 8px;"><a href="https://github.com/octomil/settle402">GitHub</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

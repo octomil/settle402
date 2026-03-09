@@ -1,0 +1,161 @@
+"""settle402 — Batch settlement for x402 micro-payments via Multicall3.
+
+Accepts batches of signed EIP-3009 transferWithAuthorization payloads and
+submits them on-chain in a single transaction, amortizing gas costs across
+hundreds of micro-payments.
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+
+from eth_account import Account
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from web3 import AsyncHTTPProvider, AsyncWeb3
+
+from .auth import verify_api_key
+from .config import CHAIN_NAMES, SettlerConfig
+from .schemas import (
+    SettleBatchRequest,
+    SettleBatchResponse,
+    SettlerStats,
+    StatusResponse,
+)
+from .settler import settle_batch
+
+logger = logging.getLogger("settle402")
+
+app = FastAPI(
+    title="settle402",
+    description="Batch settlement for x402 micro-payments via Multicall3",
+    version="0.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+
+# Populated on startup
+_config: SettlerConfig | None = None
+_w3: AsyncWeb3 | None = None
+_account = None
+_stats = SettlerStats()
+_start_time = 0.0
+
+
+@app.on_event("startup")
+async def startup() -> None:
+    global _config, _w3, _account, _start_time
+
+    _config = SettlerConfig.from_env()
+
+    logging.basicConfig(level=getattr(logging, _config.log_level.upper(), logging.INFO))
+
+    if not _config.rpc_url:
+        logger.warning("SETTLER_RPC_URL not set — settler will reject /settle requests")
+    else:
+        _w3 = AsyncWeb3(AsyncHTTPProvider(_config.rpc_url))
+
+    if _config.private_key:
+        _account = Account.from_key(_config.private_key)
+        logger.info("Settler address: %s", _account.address)
+    else:
+        logger.warning("SETTLER_PRIVATE_KEY not set — settler will reject /settle requests")
+
+    app.state.api_keys = _config.api_keys
+    _start_time = time.monotonic()
+
+    logger.info("settle402 ready on chain %d (%s)", _config.chain_id, _config.network_name)
+
+
+@app.on_event("shutdown")
+async def shutdown() -> None:
+    pass
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.get("/health")
+async def health() -> dict:
+    return {
+        "status": "ok",
+        "chain_id": _config.chain_id if _config else 0,
+        "settler": _account.address if _account else "not configured",
+    }
+
+
+@app.get("/status")
+async def status() -> StatusResponse:
+    if not _config or not _w3 or not _account:
+        raise HTTPException(503, "Settler not configured")
+
+    balance = await _w3.eth.get_balance(_account.address)
+    _stats.uptime_seconds = time.monotonic() - _start_time
+
+    return StatusResponse(
+        status="ok",
+        settler_address=_account.address,
+        eth_balance=f"{balance / 1e18:.6f}",
+        chain_id=_config.chain_id,
+        network=CHAIN_NAMES.get(_config.chain_id, f"chain-{_config.chain_id}"),
+        stats=_stats,
+    )
+
+
+@app.post("/settle", dependencies=[Depends(verify_api_key)])
+async def settle(request: SettleBatchRequest) -> SettleBatchResponse:
+    """Submit a batch of EIP-3009 authorizations for on-chain settlement."""
+    if not _config or not _w3 or not _account:
+        raise HTTPException(503, "Settler not configured — missing RPC URL or private key")
+
+    if request.chainId != _config.chain_id:
+        raise HTTPException(
+            400,
+            f"Chain mismatch: settler configured for {_config.chain_id}, got {request.chainId}",
+        )
+
+    if not request.authorizations:
+        raise HTTPException(400, "No authorizations provided")
+
+    # Check ETH balance
+    balance = await _w3.eth.get_balance(_account.address)
+    if balance < 100_000_000_000_000:  # < 0.0001 ETH
+        raise HTTPException(503, "Settler EOA has insufficient ETH for gas")
+
+    result = await settle_batch(
+        w3=_w3,
+        settler_account=_account,
+        chain_id=_config.chain_id,
+        token_contract=request.tokenContract,
+        auths=request.authorizations,
+        max_calls_per_tx=_config.max_calls_per_tx,
+        gas_multiplier=_config.gas_price_multiplier,
+    )
+
+    # Update lifetime stats
+    _stats.batches_settled += 1
+    _stats.total_auths_submitted += result.total_submitted
+    _stats.total_auths_succeeded += result.total_succeeded
+    _stats.total_auths_failed += result.total_failed
+    _stats.total_gas_spent_wei += result.total_gas_used
+    _stats.total_value_settled += sum(
+        a.amount for a, r in zip(request.authorizations, result.results) if r.success
+    )
+
+    logger.info(
+        "Batch settled: %s — %d/%d succeeded, gas=%d",
+        result.status,
+        result.total_succeeded,
+        result.total_submitted,
+        result.total_gas_used,
+    )
+
+    return result
