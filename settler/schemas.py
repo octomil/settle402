@@ -19,11 +19,12 @@ class AuthorizationItem(BaseModel):
 class SettleBatchRequest(BaseModel):
     """Batch settlement request."""
 
-    network: str  # "base", "base-sepolia", etc.
-    chainId: int  # 8453, 84532, etc.
-    tokenContract: str  # EIP-3009 token (e.g. USDC)
     authorizations: list[AuthorizationItem]
     feeAuthorization: AuthorizationItem | None = None
+    # Optional — server fills from config if omitted
+    network: str | None = None
+    chainId: int | None = None
+    tokenContract: str | None = None
 
 
 class AuthorizationResult(BaseModel):

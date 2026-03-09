@@ -484,12 +484,7 @@ Per-auth results + revert reasons
       <div class="code-body">curl <span class="flag">-X</span> POST https://api.settle402.dev/settle \
   <span class="flag">-H</span> <span class="string">"Content-Type: application/json"</span> \
   <span class="flag">-H</span> <span class="string">"X-Settler-Token: your-api-key"</span> \
-  <span class="flag">-d</span> <span class="string">'{
-    "network": "base",
-    "chainId": 8453,
-    "tokenContract": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-    "authorizations": [...]
-  }'</span></div>
+  <span class="flag">-d</span> <span class="string">'{ "authorizations": [...] }'</span></div>
     </div>
     <br>
     <div class="code-block">
@@ -511,31 +506,11 @@ Per-auth results + revert reasons
 
 <section class="chains">
   <div class="container">
-    <h2>Supported chains</h2>
-    <div class="chain-grid">
-      <div class="chain-card">
+    <h2>Supported chain</h2>
+    <div class="chain-grid" style="grid-template-columns: 1fr; max-width: 300px; margin: 0 auto;">
+      <div class="chain-card good" style="border-color: rgba(34, 197, 94, 0.3);">
         <div class="chain-name">Base</div>
-        <div class="chain-id">8453</div>
-      </div>
-      <div class="chain-card">
-        <div class="chain-name">Ethereum</div>
-        <div class="chain-id">1</div>
-      </div>
-      <div class="chain-card">
-        <div class="chain-name">Polygon</div>
-        <div class="chain-id">137</div>
-      </div>
-      <div class="chain-card">
-        <div class="chain-name">Arbitrum</div>
-        <div class="chain-id">42161</div>
-      </div>
-      <div class="chain-card">
-        <div class="chain-name">Optimism</div>
-        <div class="chain-id">10</div>
-      </div>
-      <div class="chain-card">
-        <div class="chain-name">Base Sepolia</div>
-        <div class="chain-id">84532</div>
+        <div class="chain-id">USDC · Chain 8453</div>
       </div>
     </div>
   </div>

@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from web3 import AsyncHTTPProvider, AsyncWeb3
 
 from .auth import verify_api_key
-from .config import CHAIN_NAMES, SettlerConfig
+from .config import CHAIN_NAMES, USDC_CONTRACTS, SettlerConfig
 from .schemas import (
     SettleBatchRequest,
     SettleBatchResponse,
@@ -151,11 +151,18 @@ async def settle(request: SettleBatchRequest) -> SettleBatchResponse:
     if not _config or not _w3 or not _account:
         raise HTTPException(503, "Settler not configured — missing RPC URL or private key")
 
-    if request.chainId != _config.chain_id:
+    # Fill defaults from server config
+    chain_id = request.chainId or _config.chain_id
+    token_contract = request.tokenContract or USDC_CONTRACTS.get(_config.chain_id, "")
+
+    if chain_id != _config.chain_id:
         raise HTTPException(
             400,
-            f"Chain mismatch: settler configured for {_config.chain_id}, got {request.chainId}",
+            f"Chain mismatch: settler configured for {_config.chain_id}, got {chain_id}",
         )
+
+    if not token_contract:
+        raise HTTPException(400, "Unknown token contract for this chain")
 
     if not request.authorizations:
         raise HTTPException(400, "No authorizations provided")
@@ -195,7 +202,7 @@ async def settle(request: SettleBatchRequest) -> SettleBatchResponse:
         w3=_w3,
         settler_account=_account,
         chain_id=_config.chain_id,
-        token_contract=request.tokenContract,
+        token_contract=token_contract,
         auths=request.authorizations,
         max_calls_per_tx=_config.max_calls_per_tx,
         gas_multiplier=_config.gas_price_multiplier,
