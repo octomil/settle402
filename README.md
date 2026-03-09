@@ -2,6 +2,8 @@
 
 Batch settlement for [x402](https://www.x402.org/) micro-payments via Multicall3.
 
+**Hosted API:** `https://api.settle402.dev`
+
 ## The Problem
 
 x402 micro-payments ($0.001/call) are uneconomical to settle individually — gas costs exceed the payment value, and hosted facilitators charge per-settlement fees that eat 100% of revenue at sub-$0.01 prices.
@@ -15,53 +17,76 @@ settle402 batches hundreds of signed EIP-3009 `transferWithAuthorization` payloa
 ## Quick Start
 
 ```bash
-# Clone and run
-git clone https://github.com/octomil/settle402.git
-cd settle402
+# 1. Get an API key
+curl -X POST https://api.settle402.dev/keys
+# => {"key": "s402_..."}
 
-# Configure
-cp .env.example .env
-# Edit .env with your RPC URL and private key
-
-# Run with Docker
-docker compose up -d
-
-# Or run directly
-pip install -e .
-uvicorn settler.main:app --host 0.0.0.0 --port 8002
+# 2. Submit a batch
+curl -X POST https://api.settle402.dev/settle \
+  -H "Content-Type: application/json" \
+  -H "X-Settler-Token: s402_..." \
+  -d '{"authorizations": [...]}'
 ```
+
+## MCP Server Integration
+
+settle402 is the default settlement backend for x402-enabled MCP servers. When an MCP server accumulates enough micro-payments, it submits a batch to settle402 for on-chain settlement.
+
+```bash
+# Octomil MCP server with x402 + settle402
+OCTOMIL_X402_ADDRESS=0xYourWallet \
+OCTOMIL_SETTLER_TOKEN=s402_... \
+octomil mcp serve --x402
+```
+
+**Flow:**
+1. Agent calls MCP tool → pays via `x-payment` header (EIP-3009 signed authorization)
+2. MCP server verifies signature, serves response, accumulates payment
+3. When threshold reached ($1 USDC) → batch POSTed to `api.settle402.dev/settle`
+4. settle402 submits Multicall3 tx → USDC moves on-chain to MCP operator
 
 ## API
 
-### `POST /settle`
+### `POST /keys`
 
-Submit a batch of EIP-3009 authorizations for on-chain settlement.
+Generate a new API key. No authentication required.
 
 ```bash
-curl -X POST http://localhost:8002/settle \
+curl -X POST https://api.settle402.dev/keys
+```
+
+```json
+{"key": "s402_WJKGPXecU_f3SQBdcYBiRyOrFYa21p92fxvTbUilbv4"}
+```
+
+### `POST /settle`
+
+Submit a batch of EIP-3009 authorizations for on-chain settlement. All fields except `authorizations` are optional — the server fills defaults from its config (Base mainnet, USDC).
+
+```bash
+curl -X POST https://api.settle402.dev/settle \
   -H "Content-Type: application/json" \
-  -H "X-Settler-Token: your-api-key" \
+  -H "X-Settler-Token: s402_..." \
   -d '{
-    "network": "base",
-    "chainId": 8453,
-    "tokenContract": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     "authorizations": [
       {
         "authorization": {
-          "from": "0x...",
-          "to": "0x...",
+          "from": "0xPayer",
+          "to": "0xPayee",
           "value": 1000,
           "validAfter": 0,
           "validBefore": 9999999999,
           "nonce": "0x..."
         },
         "signature": "0x...",
-        "payer": "0x...",
+        "payer": "0xPayer",
         "amount": 1000
       }
     ]
   }'
 ```
+
+**Optional fields:** `network`, `chainId`, `tokenContract` (defaults to Base USDC), `feeAuthorization` (required when fee collection is enabled on the server).
 
 **Response:**
 
@@ -73,6 +98,7 @@ curl -X POST http://localhost:8002/settle \
   "total_failed": 2,
   "total_gas_used": 65000000,
   "total_gas_cost_eth": "0.00500000",
+  "fee_collected": true,
   "sub_batches": [...],
   "results": [
     {"index": 0, "nonce": "0x...", "success": true, "tx_hash": "0x..."},
@@ -89,6 +115,12 @@ Liveness check.
 
 Settler address, ETH balance, chain ID, and lifetime stats.
 
+## Fee Collection
+
+The hosted API charges $0.10/batch via on-chain fee collection. Include a `feeAuthorization` — a signed EIP-3009 `transferWithAuthorization` paying the fee to the settler EOA. The fee settles atomically in the same Multicall3 tx with `allowFailure=false` — if the fee fails, the entire tx reverts.
+
+Missing or invalid fee authorization returns HTTP `402 Payment Required`.
+
 ## Configuration
 
 | Environment Variable | Default | Description |
@@ -99,6 +131,8 @@ Settler address, ETH balance, chain ID, and lifetime stats.
 | `SETTLER_API_KEYS` | — | Comma-separated API keys |
 | `SETTLER_MAX_CALLS_PER_TX` | `400` | Max authorizations per transaction |
 | `SETTLER_GAS_MULTIPLIER` | `1.1` | Gas estimate safety margin |
+| `SETTLER_FEE_ENABLED` | `false` | Require fee authorization |
+| `SETTLER_FEE_AMOUNT` | `100000` | Fee in base units ($0.10 USDC) |
 | `SETTLER_LOG_LEVEL` | `info` | Log level |
 
 ## Supported Chains

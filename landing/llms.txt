@@ -1,0 +1,52 @@
+# settle402
+
+> Batch settlement for x402 micro-payments via Multicall3
+
+settle402 batches hundreds of signed EIP-3009 `transferWithAuthorization` payloads and submits them on-chain in a single transaction via Multicall3, amortizing gas across the entire batch.
+
+Hosted API: https://api.settle402.dev
+Landing page: https://settle402.dev
+
+## API
+
+Base URL: https://api.settle402.dev
+
+### POST /keys
+Generate a new API key. No auth required.
+Returns: {"key": "s402_..."}
+
+### POST /settle
+Submit a batch of EIP-3009 authorizations for on-chain settlement.
+Auth: X-Settler-Token header with API key.
+Body: {"authorizations": [{authorization, signature, payer, amount}]}
+Optional fields: network, chainId, tokenContract, feeAuthorization.
+Returns: {status, total_submitted, total_succeeded, total_failed, total_gas_used, results}
+
+### GET /health
+Liveness check. Returns: {status, chain_id, settler}
+
+### GET /status
+Settler address, ETH balance, chain ID, lifetime stats.
+
+## Integration
+
+MCP servers accumulate x402 micro-payments in-memory and POST batches to settle402 when the threshold is reached. Example with Octomil:
+
+```
+OCTOMIL_X402_ADDRESS=0xYourWallet \
+OCTOMIL_SETTLER_TOKEN=s402_... \
+octomil mcp serve --x402
+```
+
+## Details
+
+- Chain: Base (8453) by default, supports Ethereum, Polygon, Arbitrum, Optimism
+- Token: USDC (EIP-3009 transferWithAuthorization)
+- Max 1,000 authorizations per batch
+- Sub-batches of 400 per on-chain transaction
+- Fee: $0.10/batch (on-chain, atomic via feeAuthorization with allowFailure=false)
+- Uses pre-deployed Multicall3 (0xcA11bde05977b3631167028862bE2a173976CA11)
+
+## Optional
+
+- [llms-full.txt](https://settle402.dev/llms-full.txt): Full API reference with schemas

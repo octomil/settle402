@@ -1,0 +1,207 @@
+# settle402 — Full API Reference
+
+> Batch settlement for x402 micro-payments via Multicall3
+
+settle402 batches hundreds of signed EIP-3009 `transferWithAuthorization` payloads and submits them on-chain in a single transaction via Multicall3, amortizing gas across the entire batch.
+
+Hosted API: https://api.settle402.dev
+Landing page: https://settle402.dev
+
+## Economics
+
+1,000 authorizations ($1 revenue) in one tx costs ~$0.005 in gas = 99.5% margin.
+
+## Authentication
+
+Header: X-Settler-Token
+Format: s402_<urlsafe-base64>
+Rate limit: 10 batches per minute per key (sliding window)
+
+## Endpoints
+
+### POST /keys
+
+Generate a new API key. No authentication required.
+
+Request: POST https://api.settle402.dev/keys
+Response: {"key": "s402_WJKGPXecU_f3SQBdcYBiRyOrFYa21p92fxvTbUilbv4"}
+
+### POST /settle
+
+Submit a batch of EIP-3009 authorizations for on-chain settlement.
+
+Request body (SettleBatchRequest):
+```json
+{
+  "authorizations": [
+    {
+      "authorization": {
+        "from": "0xPayerAddress",
+        "to": "0xPayeeAddress",
+        "value": 1000,
+        "validAfter": 0,
+        "validBefore": 9999999999,
+        "nonce": "0xUniqueNonce32Bytes"
+      },
+      "signature": "0x<65-byte-hex-r32-s32-v1>",
+      "payer": "0xPayerAddress",
+      "amount": 1000
+    }
+  ],
+  "feeAuthorization": null,
+  "network": null,
+  "chainId": null,
+  "tokenContract": null
+}
+```
+
+Field details:
+- authorizations (required): Array of 1-1000 EIP-3009 signed authorizations
+- authorization.from: Payer address (signer of the authorization)
+- authorization.to: Payee address (recipient of USDC)
+- authorization.value: Amount in base units (USDC has 6 decimals, so 1000 = $0.001)
+- authorization.validAfter: Unix timestamp, 0 for immediate
+- authorization.validBefore: Unix timestamp, high value for no expiry
+- authorization.nonce: Unique bytes32 nonce (hex-encoded with 0x prefix)
+- signature: 65-byte EIP-3009 signature (r[32] + s[32] + v[1]), hex-encoded
+- payer: Redundant payer address (must match authorization.from)
+- amount: Informational amount (must match authorization.value)
+- feeAuthorization (optional): Same structure as an authorization item, paying the settler EOA. Required when fee collection is enabled.
+- network (optional): Chain name, defaults to server config
+- chainId (optional): Chain ID, defaults to 8453 (Base). Must match server's chain.
+- tokenContract (optional): USDC contract address, auto-resolved from chain ID
+
+Response body (SettleBatchResponse):
+```json
+{
+  "status": "settled",
+  "total_submitted": 100,
+  "total_succeeded": 98,
+  "total_failed": 2,
+  "total_gas_used": 6500000,
+  "total_gas_cost_eth": "0.00050000",
+  "fee_collected": true,
+  "sub_batches": [
+    {
+      "tx_hash": "0xabc123...",
+      "gas_used": 6500000,
+      "gas_price_gwei": 0.05,
+      "call_count": 100,
+      "success_count": 98,
+      "failure_count": 2
+    }
+  ],
+  "results": [
+    {"index": 0, "nonce": "0x...", "success": true, "error": null, "tx_hash": "0xabc123..."},
+    {"index": 1, "nonce": "0x...", "success": false, "error": "authorization expired", "tx_hash": "0xabc123..."}
+  ]
+}
+```
+
+Status values: "settled" (all succeeded), "partial" (some failed), "failed" (all failed)
+
+### GET /health
+
+Response: {"status": "ok", "chain_id": 8453, "settler": "0x7A92D874Fd0b443e60a6F7fc408A1813655a444b"}
+
+### GET /status
+
+Response:
+```json
+{
+  "status": "ok",
+  "settler_address": "0x7A92...",
+  "eth_balance": "0.012500",
+  "chain_id": 8453,
+  "network": "base",
+  "stats": {
+    "batches_settled": 42,
+    "total_auths_submitted": 4200,
+    "total_auths_succeeded": 4195,
+    "total_auths_failed": 5,
+    "total_gas_spent_wei": 1234567890000,
+    "total_value_settled": 4200000,
+    "uptime_seconds": 86400.5
+  }
+}
+```
+
+## Error Responses
+
+- 400: Invalid request (chain mismatch, no auths, >1000 auths, unknown token)
+- 401: Missing or invalid X-Settler-Token
+- 402: Fee authorization required/invalid (when fee collection enabled)
+- 429: Rate limit exceeded
+- 503: Settler not configured or insufficient ETH for gas
+
+## Fee Collection
+
+The hosted API charges $0.10/batch. Include a feeAuthorization in the request — a signed EIP-3009 transferWithAuthorization paying >= 100,000 base units ($0.10 USDC) to the settler EOA.
+
+The fee call is prepended to the first Multicall3 sub-batch with allowFailure=false. If the fee transfer fails, the entire transaction reverts — the settler never does free work.
+
+Fee validation order:
+1. feeAuthorization must be present → 402 if missing
+2. authorization.to must equal settler EOA address → 402 if wrong recipient
+3. authorization.value must be >= fee_amount → 402 if insufficient
+
+## On-Chain Mechanics
+
+1. Receive batch of signed EIP-3009 transferWithAuthorization payloads
+2. Split into sub-batches of 400 (Base gas limit ~30M, each auth ~65K gas)
+3. Encode each sub-batch as Multicall3.aggregate3() with allowFailure=true for user auths
+4. Build EIP-1559 transaction, estimate gas with 1.1x multiplier
+5. Sign and submit via settler EOA
+6. Decode per-authorization results from Multicall3 return data
+7. Return per-auth success/failure with decoded revert reasons
+
+Contract addresses:
+- Multicall3: 0xcA11bde05977b3631167028862bE2a173976CA11 (all EVM chains)
+- USDC on Base: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+- USDC on Ethereum: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+- USDC on Polygon: 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359
+- USDC on Arbitrum: 0xaf88d065e77c8cC2239327C5EDb3A432268e5831
+- USDC on Optimism: 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85
+
+## MCP Server Integration
+
+MCP servers that charge x402 micro-payments accumulate signed authorizations in-memory. When the running total exceeds a threshold (default $1 USDC), the batch is POSTed to settle402 for on-chain settlement.
+
+Integration code (Python):
+```python
+import httpx
+
+async def settle_batch(authorizations, settler_url, settler_token):
+    payload = {
+        "authorizations": [
+            {
+                "authorization": a.authorization,
+                "signature": a.signature,
+                "payer": a.payer,
+                "amount": a.amount,
+            }
+            for a in authorizations
+        ]
+    }
+    headers = {"x-settler-token": settler_token}
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(f"{settler_url}/settle", json=payload, headers=headers)
+        resp.raise_for_status()
+        return resp.json()
+```
+
+## Configuration (Self-Hosted)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| SETTLER_RPC_URL | (required) | EVM RPC endpoint |
+| SETTLER_PRIVATE_KEY | (required) | Settler EOA private key |
+| SETTLER_CHAIN_ID | 8453 | Target chain ID |
+| SETTLER_API_KEYS | (empty) | Comma-separated API keys |
+| SETTLER_MAX_CALLS_PER_TX | 400 | Max auths per on-chain transaction |
+| SETTLER_GAS_MULTIPLIER | 1.1 | Gas estimate safety margin |
+| SETTLER_RATE_LIMIT | 10 | Max batches/min per API key |
+| SETTLER_FEE_ENABLED | false | Require fee authorization |
+| SETTLER_FEE_AMOUNT | 100000 | Fee in base units ($0.10 USDC) |
+| SETTLER_PORT | 8002 | HTTP listen port |
+| SETTLER_LOG_LEVEL | info | Python logging level |
