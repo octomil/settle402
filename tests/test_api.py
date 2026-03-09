@@ -63,6 +63,34 @@ class TestAuth:
         # Will fail with 503 (not configured) but NOT 401
         assert resp.status_code != 401
 
+    def test_rate_limit_enforced(self, client):
+        from settler.auth import _rate_buckets
+
+        app.state.api_keys = ["rate-key"]
+        app.state.rate_limit = 2  # 2 per minute for test
+
+        # Clear any previous state
+        _rate_buckets.clear()
+
+        payload = {
+            "network": "base",
+            "chainId": 8453,
+            "tokenContract": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+            "authorizations": [],
+        }
+        headers = {"x-settler-token": "rate-key"}
+
+        # First 2 should pass (503 = not configured, but not 429)
+        for _ in range(2):
+            resp = client.post("/settle", json=payload, headers=headers)
+            assert resp.status_code != 429
+
+        # Third should be rate limited
+        resp = client.post("/settle", json=payload, headers=headers)
+        assert resp.status_code == 429
+
+        _rate_buckets.clear()
+
 
 class TestSettleValidation:
     def test_empty_authorizations_rejected(self, client):

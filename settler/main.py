@@ -68,6 +68,7 @@ async def startup() -> None:
         logger.warning("SETTLER_PRIVATE_KEY not set — settler will reject /settle requests")
 
     app.state.api_keys = _config.api_keys
+    app.state.rate_limit = _config.rate_limit
     _start_time = time.monotonic()
 
     logger.info("settle402 ready on chain %d (%s)", _config.chain_id, _config.network_name)

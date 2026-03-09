@@ -38,6 +38,7 @@ class SettlerConfig:
     api_keys: list[str] = field(default_factory=list)
     max_calls_per_tx: int = 400
     gas_price_multiplier: float = 1.1
+    rate_limit: int = 10  # max batches per minute per API key
     port: int = 8002
     log_level: str = "info"
 
@@ -52,6 +53,7 @@ class SettlerConfig:
             api_keys=api_keys,
             max_calls_per_tx=int(os.environ.get("SETTLER_MAX_CALLS_PER_TX", "400")),
             gas_price_multiplier=float(os.environ.get("SETTLER_GAS_MULTIPLIER", "1.1")),
+            rate_limit=int(os.environ.get("SETTLER_RATE_LIMIT", "10")),
             port=int(os.environ.get("SETTLER_PORT", "8002")),
             log_level=os.environ.get("SETTLER_LOG_LEVEL", "info"),
         )
