@@ -333,26 +333,28 @@
 
 <section class="economics">
   <div class="container">
-    <h2>The math works</h2>
+    <h2>Settlement cost comparison</h2>
     <div class="comparison">
       <div class="comparison-card bad">
-        <h3>Without settle402</h3>
-        <div class="big-number">-$4</div>
-        <div class="detail">Per 1,000 settlements at $0.001 each</div>
+        <h3>Individual settlement</h3>
+        <div class="big-number">$5.00</div>
+        <div class="detail">Cost to settle 1,000 payments individually</div>
         <div class="math-detail">
-Revenue:     1,000 x $0.001 = $1.00
-Gas:         1,000 x $0.005 = $5.00
-Net:                          <span style="color:var(--red)">-$4.00</span>
+Payments:    1,000
+Gas per tx:  ~$0.005
+Total cost:  1,000 x $0.005 = <span style="color:var(--red)">$5.00</span>
+Per payment: <span style="color:var(--red)">$0.005</span>
         </div>
       </div>
       <div class="comparison-card good">
         <h3>With settle402</h3>
-        <div class="big-number">+$0.995</div>
-        <div class="detail">Same 1,000 settlements, one transaction</div>
+        <div class="big-number">$0.005</div>
+        <div class="detail">Same 1,000 payments, one transaction</div>
         <div class="math-detail">
-Revenue:     1,000 x $0.001 = $1.00
-Gas:                     1 tx = $0.005
-Net:                          <span style="color:var(--green)">+$0.995</span>
+Payments:    1,000
+Gas per tx:  ~$0.005
+Total cost:  1 x $0.005     = <span style="color:var(--green)">$0.005</span>
+Per payment: <span style="color:var(--green)">$0.000005</span>
         </div>
       </div>
     </div>
