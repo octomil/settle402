@@ -14,18 +14,18 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Office/Business :: Financial :: Point-Of-Sale",
 ]
-
-[project.urls]
-Homepage = "https://settle402.dev"
-Repository = "https://github.com/octomil/settle402"
-Documentation = "https://github.com/octomil/settle402#readme"
-Issues = "https://github.com/octomil/settle402/issues"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
     "web3>=7.0.0",
     "pydantic>=2.0.0",
 ]
+
+[project.urls]
+Homepage = "https://settle402.dev"
+Repository = "https://github.com/octomil/settle402"
+Documentation = "https://github.com/octomil/settle402#readme"
+Issues = "https://github.com/octomil/settle402/issues"
 
 [project.optional-dependencies]
 dev = [
