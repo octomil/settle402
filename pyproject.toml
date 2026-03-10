@@ -5,6 +5,21 @@ description = "Batch settlement for x402 micro-payments via Multicall3"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
+keywords = ["x402", "micropayments", "batch-settlement", "multicall3", "usdc", "eip-3009"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Office/Business :: Financial :: Point-Of-Sale",
+]
+
+[project.urls]
+Homepage = "https://settle402.dev"
+Repository = "https://github.com/octomil/settle402"
+Documentation = "https://github.com/octomil/settle402#readme"
+Issues = "https://github.com/octomil/settle402/issues"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
