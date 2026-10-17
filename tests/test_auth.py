@@ -71,6 +71,6 @@ class TestRateLimit:
     def test_stale_buckets_evicted(self, monkeypatch):
         monkeypatch.setattr(auth, "_SWEEP_THRESHOLD", 5)
         for i in range(10):
-            auth._rate_buckets[f"old{i}"] = [0.0]
+            auth._rate_buckets[f"old{i}"] = [-1e9]
         assert auth._check_rate_limit("fresh", 1)
         assert set(auth._rate_buckets) == {"fresh"}
