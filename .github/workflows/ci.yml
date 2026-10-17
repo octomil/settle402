@@ -18,7 +18,7 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest tests/ -v
-      - run: pip install pip-audit && pip-audit
+      - run: pip install -U setuptools pip-audit && pip-audit
 
   docker:
     runs-on: ubuntu-latest
