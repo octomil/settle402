@@ -2,11 +2,27 @@ services:
   settler:
     build: .
     ports:
-      - "8002:8002"
+      - "127.0.0.1:8002:8002"
     environment:
       SETTLER_RPC_URL: ${SETTLER_RPC_URL}
-      SETTLER_PRIVATE_KEY: ${SETTLER_PRIVATE_KEY}
+      SETTLER_PRIVATE_KEY_FILE: /run/secrets/settler_private_key
       SETTLER_CHAIN_ID: ${SETTLER_CHAIN_ID:-8453}
       SETTLER_API_KEYS: ${SETTLER_API_KEYS:-}
       SETTLER_LOG_LEVEL: ${SETTLER_LOG_LEVEL:-info}
+      SETTLER_FEE_ENABLED: ${SETTLER_FEE_ENABLED:-false}
+      SETTLER_FEE_AMOUNT: ${SETTLER_FEE_AMOUNT:-100000}
+      SETTLER_RATE_LIMIT: ${SETTLER_RATE_LIMIT:-10}
+      SETTLER_MAX_FEE_GWEI: ${SETTLER_MAX_FEE_GWEI:-50}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+    secrets:
+      - settler_private_key
+    volumes:
+      - settle402-data:/data
     restart: unless-stopped
+
+secrets:
+  settler_private_key:
+    file: ./secrets/settler_private_key
+
+volumes:
+  settle402-data:

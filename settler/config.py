@@ -28,6 +28,30 @@ CHAIN_NAMES: dict[int, str] = {
 }
 
 
+# EIP-712 (name, version) of the USDC token per chain, for off-chain signer recovery
+USDC_EIP712_DOMAINS: dict[int, tuple[str, str]] = {
+    8453: ("USD Coin", "2"),
+    84532: ("USDC", "2"),
+    1: ("USD Coin", "2"),
+    137: ("USD Coin", "2"),
+    42161: ("USD Coin", "2"),
+    10: ("USD Coin", "2"),
+}
+
+
+def _read_private_key() -> str:
+    key = os.environ.get("SETTLER_PRIVATE_KEY", "")
+    path = os.environ.get("SETTLER_PRIVATE_KEY_FILE", "")
+    if not key and path:
+        with open(path) as f:
+            key = f.read().strip()
+    return key
+
+
+def _csv(name: str) -> list[str]:
+    return [v.strip() for v in os.environ.get(name, "").split(",") if v.strip()]
+
+
 @dataclass
 class SettlerConfig:
     """Configuration loaded from environment variables."""
@@ -43,6 +67,13 @@ class SettlerConfig:
     fee_amount: int = 100_000  # $0.10 USDC (6 decimals)
     port: int = 8002
     log_level: str = "info"
+    admin_token: str = ""
+    max_keys: int = 1000
+    keys_file: str = "/data/keys.json"
+    token_allowlist: list[str] = field(default_factory=list)  # extra tokens beyond USDC
+    payee_allowlist: list[str] = field(default_factory=list)  # empty = any recipient
+    min_value: int = 1  # base units
+    max_fee_per_gas_gwei: float = 50.0
 
     @classmethod
     def from_env(cls) -> SettlerConfig:
@@ -51,7 +82,7 @@ class SettlerConfig:
         return cls(
             rpc_url=os.environ.get("SETTLER_RPC_URL", ""),
             chain_id=int(os.environ.get("SETTLER_CHAIN_ID", "8453")),
-            private_key=os.environ.get("SETTLER_PRIVATE_KEY", ""),
+            private_key=_read_private_key(),
             api_keys=api_keys,
             max_calls_per_tx=int(os.environ.get("SETTLER_MAX_CALLS_PER_TX", "400")),
             gas_price_multiplier=float(os.environ.get("SETTLER_GAS_MULTIPLIER", "1.1")),
@@ -60,6 +91,13 @@ class SettlerConfig:
             fee_amount=int(os.environ.get("SETTLER_FEE_AMOUNT", "100000")),
             port=int(os.environ.get("SETTLER_PORT", "8002")),
             log_level=os.environ.get("SETTLER_LOG_LEVEL", "info"),
+            admin_token=os.environ.get("ADMIN_TOKEN", ""),
+            max_keys=int(os.environ.get("SETTLER_MAX_KEYS", "1000")),
+            keys_file=os.environ.get("SETTLER_KEYS_FILE", "/data/keys.json"),
+            token_allowlist=_csv("SETTLER_TOKEN_ALLOWLIST"),
+            payee_allowlist=_csv("SETTLER_PAYEE_ALLOWLIST"),
+            min_value=int(os.environ.get("SETTLER_MIN_VALUE", "1")),
+            max_fee_per_gas_gwei=float(os.environ.get("SETTLER_MAX_FEE_GWEI", "50")),
         )
 
     @property

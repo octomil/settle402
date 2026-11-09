@@ -14,10 +14,10 @@ classifiers = [
     "Topic :: Office/Business :: Financial :: Point-Of-Sale",
 ]
 dependencies = [
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.30.0",
-    "web3>=7.0.0",
-    "pydantic>=2.0.0",
+    "fastapi>=0.115.0,<1",
+    "uvicorn[standard]>=0.30.0,<1",
+    "web3>=7.0.0,<8",
+    "pydantic>=2.0.0,<3",
 ]
 
 [project.urls]
