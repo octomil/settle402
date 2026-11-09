@@ -1,0 +1,8 @@
+{
+  "name": "settle402",
+  "compatibility_date": "2026-11-09",
+  "assets": {
+    "directory": "./landing",
+    "not_found_handling": "single-page-application"
+  }
+}
